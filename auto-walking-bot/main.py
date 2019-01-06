@@ -1,52 +1,43 @@
 import numpy as np
 from grabscreen import grab_screen
 import cv2
-from directkeys import PressKey, ReleaseKey, D
+from directkeys import PressKey, ReleaseKey, D, W
 import time
 
-
-def draw_lines(img, lines):
-    try:
-        for line in lines:
-            return True
-
-    except Exception:
-        pass
-
-
 def roi(img, vertices):
-    mask = np.zeros_like(img)
-    cv2.fillPoly(mask, vertices, 255)
-    masked = cv2.bitwise_and(img, mask)
-    return masked
+	mask = np.zeros_like(img)
+	cv2.fillPoly(mask, vertices, 255)
+	masked = cv2.bitwise_and(img, mask)
+	return masked
+
+def processImg(originalImg):
+	processedImg = cv2.Canny(originalImg, 100, 300)
+	processedImg = cv2.GaussianBlur(processedImg, (5,5), 0)
+	
+	vertices = np.array([[300,450],[300,120],[500,120],[500,450]])
+	processedImg = roi(processedImg, [vertices])
+	
+	lines = cv2.HoughLinesP(processedImg, 1, np.pi/180, 180, np.array([]), 250, 15)
+	
+	try:
+		if lines.any():
+			return True
+	except:
+		return False
 
 
-def process_img(original_img):
-    processed_img = cv2.Canny(original_img, 100, 300)
-    processed_img = cv2.GaussianBlur(processed_img, (5, 5), 0)
+startingTime = 0
+blockWasInFront = False
 
-    vertices = np.array([[300, 450], [300, 120], [500, 120], [500, 450]])
-    processed_img = roi(processed_img, [vertices])
-
-    lines = cv2.HoughLinesP(processed_img, 1, np.pi / 180,
-                            180, np.array([]), 250, 15)
-    blockInFront = draw_lines(processed_img, lines)
-
-    return processed_img, blockInFront
-
-
-paused, blockInFront, blockWasInFront = False, False, False
-
-while(True):
-    if not paused:
-        screen, blockInFront = process_img(
-            # Where the minecraft window is on the screen
-            grab_screen(region=(3, 30, 800, 530)))
-        last_time = 0
-        # Removing the parenthesis gives SyntaxError
-        if blockInFront & (not blockWasInFront):
-            last_time = time.time()
-            PressKey(D)
-        if time.time() - last_time > 1:
-            ReleaseKey(D)
-            last_time = 0
+PressKey(W)
+while True:
+	blockInFront = processImg(grab_screen(region=(3,30,800,530)))
+	if blockInFront & (not blockWasInFront):
+		startingTime = time.time()
+		blockWasInFront = True
+		PressKey(D)
+	
+	if (time.time() - startingTime > 0.5) & blockWasInFront:
+		startingTime = 0
+		blockWasInFront = False
+		ReleaseKey(D)
